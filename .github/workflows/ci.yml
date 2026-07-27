@@ -20,6 +20,7 @@ jobs:
           pip install -r backend/requirements.txt
       - name: Run tests
         env:
+          APP_ENV: test
           JWT_SECRET: ci-secret-must-be-at-least-32-characters-long-abcdef
           DATABASE_URL: sqlite:///./acvs-test.db
           CORS_ORIGINS: '["http://localhost:3000"]'
@@ -43,9 +44,16 @@ jobs:
         run: |
           cd ai-engine && pytest -v
 
-  # NOTE: dashboard-lint and extension-lint jobs are temporarily disabled.
-  # - The admin dashboard currently lives in the workspace's Next.js project
-  #   root, not under repo/admin-dashboard/ (which is empty in the repo).
-  # - The browser extension's package-lock.json has not been committed yet.
-  # Both jobs will be re-enabled in a follow-up commit once the dashboard is
-  # moved into the repo and the extension lockfile is generated.
+  dashboard-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install deps
+        working-directory: admin-dashboard
+        run: npm install --no-audit --no-fund
+      - name: TypeScript type-check
+        working-directory: admin-dashboard
+        run: npx tsc --noEmit

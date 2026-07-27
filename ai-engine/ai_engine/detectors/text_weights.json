@@ -1,0 +1,12 @@
+{
+  "weights": {
+    "burstiness": -1.0173564493707754,
+    "lexical_diversity": -1.018594139129996,
+    "char_entropy": 1.4772238363004593,
+    "function_word_ratio": 1.2746998153732194,
+    "punctuation_ratio": -1.952511497607634,
+    "repetitive_trigram_density": 0.0,
+    "mean_sentence_length": 2.9805510048618853
+  },
+  "bias": 0.4494155347086073
+}

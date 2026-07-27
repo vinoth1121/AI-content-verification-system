@@ -34,6 +34,7 @@ slowapi==0.1.9
 loguru==0.7.2
 tenacity==8.2.3
 email-validator==2.1.1
+prometheus-client==0.20.0
 
 # Testing
 pytest==8.1.1

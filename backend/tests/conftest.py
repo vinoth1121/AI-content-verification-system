@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT / "ai-engine"))
 os.environ.setdefault("JWT_SECRET", "test-secret-must-be-at-least-32-characters-long")
 os.environ["DATABASE_URL"] = "sqlite:///./acvs.db"
 os.environ.setdefault("CORS_ORIGINS", '["http://localhost:3000"]')
+os.environ["APP_ENV"] = "test"
 
 from app.db.session import Base  # noqa: E402
 from app.core.deps import get_db  # noqa: E402

@@ -119,6 +119,12 @@ def run_video_scan(db: Session, user_id: int, video_bytes: bytes, mime: str) -> 
 # --------------------------------------------------------------------------- #
 def _execute(db: Session, scan: Scan, callable_: Any) -> Scan:
     """Run a detector callable and persist results."""
+    from app.core.metrics import (
+        scans_completed_total,
+        scans_failed_total,
+        scan_duration_seconds,
+    )
+
     start = time.perf_counter()
     try:
         raw: dict = callable_()
@@ -128,13 +134,19 @@ def _execute(db: Session, scan: Scan, callable_: Any) -> Scan:
         scan.explanation = result.explanation
         scan.result = raw
         scan.status = ScanStatus.completed
+        scans_completed_total.labels(
+            modality=scan.modality.value, label=result.label,
+        ).inc()
     except Exception as exc:
         logger.exception("Scan %s failed: %s", scan.id, exc)
         scan.status = ScanStatus.failed
         scan.result = {"error": str(exc)}
         scan.explanation = "Detection failed; please retry."
+        scans_failed_total.labels(modality=scan.modality.value).inc()
     finally:
-        scan.duration_ms = int((time.perf_counter() - start) * 1000)
+        elapsed = time.perf_counter() - start
+        scan_duration_seconds.labels(modality=scan.modality.value).observe(elapsed)
+        scan.duration_ms = int(elapsed * 1000)
         scan.completed_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(scan)

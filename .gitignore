@@ -95,3 +95,5 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 .DS_Store
+acvs-migrate.db
+.pytest_cache/

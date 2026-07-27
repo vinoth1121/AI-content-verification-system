@@ -2,11 +2,12 @@
 import hashlib
 import logging
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.deps import CurrentUser, DbSession
+from app.core.rate_limit import limiter
 from app.models.scan import ScanModality
 from app.schemas.scan import ScanListOut, ScanOut, ScanTextRequest
 from app.services import scan_service
@@ -16,28 +17,24 @@ settings = get_settings()
 logger = logging.getLogger(__name__)
 
 
-# --------------------------------------------------------------------------- #
-# Text
-# --------------------------------------------------------------------------- #
 @router.post("/text", response_model=ScanOut, status_code=status.HTTP_201_CREATED)
-def scan_text(payload: ScanTextRequest, db: DbSession, user: CurrentUser):
+@limiter.limit(settings.RATE_LIMIT_SCAN)
+def scan_text(payload: ScanTextRequest, request: Request, response: Response, db: DbSession, user: CurrentUser):
     scan = scan_service.run_text_scan(db, user.id, payload.text)
     return _to_out(scan)
 
 
 @router.post("/fake-news", response_model=ScanOut, status_code=status.HTTP_201_CREATED)
-def scan_fake_news(payload: ScanTextRequest, db: DbSession, user: CurrentUser):
+@limiter.limit(settings.RATE_LIMIT_SCAN)
+def scan_fake_news(payload: ScanTextRequest, request: Request, response: Response, db: DbSession, user: CurrentUser):
     scan = scan_service.run_fake_news_scan(db, user.id, payload.text, payload.title)
     return _to_out(scan)
 
 
-# --------------------------------------------------------------------------- #
-# File uploads
-# --------------------------------------------------------------------------- #
 @router.post("/image", response_model=ScanOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit(settings.RATE_LIMIT_SCAN)
 async def scan_image(
-    db: DbSession,
-    user: CurrentUser,
+    request: Request, response: Response, db: DbSession, user: CurrentUser,
     file: UploadFile = File(..., description="PNG / JPEG / WEBP up to 10 MB"),
 ):
     raw = await _read_upload(file, settings.MAX_IMAGE_MB)
@@ -46,9 +43,9 @@ async def scan_image(
 
 
 @router.post("/audio", response_model=ScanOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit(settings.RATE_LIMIT_SCAN)
 async def scan_audio(
-    db: DbSession,
-    user: CurrentUser,
+    request: Request, response: Response, db: DbSession, user: CurrentUser,
     file: UploadFile = File(..., description="WAV / MP3 / FLAC up to 50 MB"),
 ):
     raw = await _read_upload(file, settings.MAX_AUDIO_MB)
@@ -57,9 +54,9 @@ async def scan_audio(
 
 
 @router.post("/video", response_model=ScanOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit(settings.RATE_LIMIT_SCAN)
 async def scan_video(
-    db: DbSession,
-    user: CurrentUser,
+    request: Request, response: Response, db: DbSession, user: CurrentUser,
     file: UploadFile = File(..., description="MP4 / WEBM up to 100 MB"),
 ):
     raw = await _read_upload(file, settings.MAX_VIDEO_MB)
@@ -67,13 +64,9 @@ async def scan_video(
     return _to_out(scan)
 
 
-# --------------------------------------------------------------------------- #
-# History
-# --------------------------------------------------------------------------- #
 @router.get("/history", response_model=ScanListOut)
 def history(
-    db: DbSession,
-    user: CurrentUser,
+    db: DbSession, user: CurrentUser,
     modality: ScanModality | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -90,11 +83,7 @@ def history_detail(scan_id: int, db: DbSession, user: CurrentUser):
     return _to_out(scan)
 
 
-# --------------------------------------------------------------------------- #
-# Helpers
-# --------------------------------------------------------------------------- #
 async def _read_upload(file: UploadFile, max_mb: int) -> bytes:
-    """Read an UploadFile with size enforcement."""
     raw = await file.read()
     if len(raw) > max_mb * 1024 * 1024:
         raise HTTPException(

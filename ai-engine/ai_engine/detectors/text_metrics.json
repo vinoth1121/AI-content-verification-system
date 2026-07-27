@@ -1,0 +1,14 @@
+{
+  "accuracy": 0.975,
+  "roc_auc": 0.9987499999999999,
+  "n_samples": 80,
+  "feature_order": [
+    "burstiness",
+    "lexical_diversity",
+    "char_entropy",
+    "function_word_ratio",
+    "punctuation_ratio",
+    "repetitive_trigram_density",
+    "mean_sentence_length"
+  ]
+}
